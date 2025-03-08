@@ -1,8 +1,10 @@
-from ctypes import *
-from ctypes.wintypes import *
+from ctypes import c_ubyte, c_ushort, c_ulong, c_void_p, c_wchar_p
+from ctypes import POINTER
+from ctypes.wintypes import HANDLE, DWORD, BOOL
 from .winusbclasses import UsbSetupPacket, Overlapped, UsbInterfaceDescriptor, LpSecurityAttributes, GUID, \
     SpDevinfoData, SpDeviceInterfaceData, SpDeviceInterfaceDetailData, PipeInfo
 
+#winusb funcs
 WinUsb_Initialize = "WinUsb_Initialize"
 WinUsb_ControlTransfer = "WinUsb_ControlTransfer"
 WinUsb_GetDescriptor = "WinUsb_GetDescriptor"
@@ -18,14 +20,19 @@ WinUsb_GetAssociatedInterface = "WinUsb_GetAssociatedInterface"
 WinUsb_QueryPipe = "WinUsb_QueryPipe"
 # WinUsb_ControlTransfer = "WinUsb_ControlTransfer"
 # WinUsb_QueryPipe = "WinUsb_QueryPipe"
+
+#kernel32 funcs
 Close_Handle = "CloseHandle"
 CreateFile = "CreateFileW"
+CreateEvent = "CreateEventW"
 ReadFile = "ReadFile"
 CancelIo = "CancelIo"
 WriteFile = "WriteFile"
 SetEvent = "SetEvent"
 WaitForSingleObject = "WaitForSingleObject"
 GetLastError = "GetLastError"
+
+#other
 SetupDiGetClassDevs = "SetupDiGetClassDevs"
 SetupDiEnumDeviceInterfaces = "SetupDiEnumDeviceInterfaces"
 SetupDiGetDeviceInterfaceDetail = "SetupDiGetDeviceInterfaceDetail"
@@ -180,21 +187,21 @@ def get_setupapi_functions(setupapi):
     setupapi_functions[SetupDiEnumDeviceInterfaces] = setupapi.SetupDiEnumDeviceInterfaces
     setupapi_restypes[SetupDiEnumDeviceInterfaces] = BOOL
     setupapi_argtypes[SetupDiEnumDeviceInterfaces] = [c_void_p, POINTER(SpDevinfoData), POINTER(GUID), DWORD,
-                                                      POINTER(SpDeviceInterfaceData)]
+                                                    POINTER(SpDeviceInterfaceData)]
 
     # BOOL SetupDiGetDeviceInterfaceDetail(_In_ HDEVINFO DeviceInfoSet,_In_ PSP_DEVICE_INTERFACE_DATA DeviceInterfaceData,_Out_opt_ PSP_DEVICE_INTERFACE_DETAIL_DATA DeviceInterfaceDetailData,_In_ DWORD DeviceInterfaceDetailDataSize,_Out_opt_  PDWORD RequiredSize,_Out_opt_  PSP_DEVINFO_DATA DeviceInfoData);
     setupapi_functions[SetupDiGetDeviceInterfaceDetail] = setupapi.SetupDiGetDeviceInterfaceDetailW
     setupapi_restypes[SetupDiGetDeviceInterfaceDetail] = BOOL
     setupapi_argtypes[SetupDiGetDeviceInterfaceDetail] = [c_void_p, POINTER(SpDeviceInterfaceData),
-                                                          POINTER(SpDeviceInterfaceDetailData), DWORD, POINTER(DWORD),
-                                                          POINTER(SpDevinfoData)]
+                                                        POINTER(SpDeviceInterfaceDetailData), DWORD, POINTER(DWORD),
+                                                        POINTER(SpDevinfoData)]
 
     # BOOL SetupDiGetDeviceInterfaceDetail(_In_ HDEVINFO DeviceInfoSet,_In_ PSP_DEVICE_INTERFACE_DATA DeviceInterfaceData,_Out_opt_ PSP_DEVICE_INTERFACE_DETAIL_DATA DeviceInterfaceDetailData,_In_ DWORD DeviceInterfaceDetailDataSize,_Out_opt_  PDWORD RequiredSize,_Out_opt_  PSP_DEVINFO_DATA DeviceInfoData);
     setupapi_functions[SetupDiGetDeviceRegistryProperty] = setupapi.SetupDiGetDeviceRegistryPropertyW
     setupapi_restypes[SetupDiGetDeviceRegistryProperty] = BOOL
     setupapi_argtypes[SetupDiGetDeviceRegistryProperty] = [c_void_p, POINTER(SpDevinfoData),
-                                                          DWORD, POINTER(DWORD),
-                                                          c_void_p, DWORD, POINTER(DWORD)]
+                                                        DWORD, POINTER(DWORD),
+                                                        c_void_p, DWORD, POINTER(DWORD)]
     # [HDEVINFO, PSP_DEVINFO_DATA, DWORD, PDWORD, PBYTE, DWORD, PDWORD]
 
     # BOOL SetupDiEnumDeviceInfo(HDEVINFO DeviceInfoSet, DWORD MemberIndex, PSP_DEVINFO_DATA DeviceInfoData);
@@ -207,12 +214,14 @@ def get_setupapi_functions(setupapi):
     setupapi_dict["argtypes"] = setupapi_argtypes
     return setupapi_dict
 
-
-def is_device(vid, pid, path, name=None):
-    if name and name.lower() == path.lower():
-        return True
+def is_device(vid:int, pid:int, path:str, name:str=None):
     if vid and pid:
-        if path.lower().find('vid_%04x' % int(str(vid), 0)) != -1 and path.lower().find('pid_%04x' % int(str(pid), 0)) != -1:
-            return True
+        vid_str = f"vid_{int(str(vid), 0):04x}"
+        pid_str = f"pid_{int(str(pid), 0):04x}"
+        path_lower = path.lower()
+        
+        return vid_str in path_lower and pid_str in path_lower
+    elif name and name.lower() == path.lower():
+        return True
     else:
         return False

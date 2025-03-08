@@ -1,6 +1,6 @@
+from ctypes import windll
 from .winusberror import WinUSBError
-from .winusbutils import *
-
+from .winusbutils import get_winusb_functions, get_kernel32_functions, get_setupapi_functions
 
 class WinUSBApi(object):
     """ Facade class wrapping USB library WinUSB"""

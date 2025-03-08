@@ -1,5 +1,8 @@
-from ctypes import *
-from ctypes.wintypes import *
+from ctypes import c_byte, c_ubyte, c_ushort, c_ulong, c_void_p, byref, c_wchar_p
+from ctypes import Structure, POINTER
+from ctypes.wintypes import HANDLE, LPVOID, DWORD, WORD, BOOL, WCHAR
+from ctypes import windll, oledll
+from functools import total_ordering
 
 _ole32 = oledll.ole32
 
@@ -75,7 +78,7 @@ class GUID(Structure):
                 ("data3", WORD), ("data4", c_byte * 8)]
 
     def __repr__(self):
-        return u'GUID("%s")' % str(self)
+        return f'GUID("{str(self)}")'
 
     def __str__(self):
         p = c_wchar_p()
@@ -84,24 +87,34 @@ class GUID(Structure):
         _CoTaskMemFree(p)
         return result
 
-    def __cmp__(self, other):
-        if isinstance(other, GUID):
-            a = bytes(self)
-            b = bytes(other)
-            return (a > b) - (a < b)
-        return -1
-
-    def __nonzero__(self):
-        return self != GUID_null
-
     def __eq__(self, other):
-        return isinstance(other, GUID) and \
-               bytes(self) == bytes(other)
+        if isinstance(other, GUID):
+            return (self.data1, self.data2, self.data3, bytes(self.data4)) == (other.data1, other.data2, other.data3, bytes(other.data4))
+        return False
 
     def __hash__(self):
-        # We make GUID instances hashable, although they are mutable.
-        return hash(bytes(self))
+        # Hashing the GUID based on its fields
+        return hash((self.data1, self.data2, self.data3, bytes(self.data4)))
 
+    def __bool__(self):
+        # Check if the GUID is null or not
+        return not all(getattr(self, field) == 0 for field in ('data1', 'data2', 'data3', 'data4'))
+
+    @total_ordering
+    class GUIDComparison:
+        def __lt__(self, other):
+            if isinstance(other, GUID):
+                return (self.data1, self.data2, self.data3, bytes(self.data4)) < (other.data1, other.data2, other.data3, bytes(other.data4))
+            return NotImplemented
+
+        def __le__(self, other):
+            return self == other or self < other
+
+        def __gt__(self, other):
+            return not self <= other
+
+        def __ge__(self, other):
+            return not self < other
 
 GUID_null = GUID()
 
